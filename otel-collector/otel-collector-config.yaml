@@ -27,7 +27,7 @@ exporters:
       insecure: true
 
   otlphttp/victoriatraces:
-    traces_endpoint: http://victoriatraces:10428/insert/opentelemetry/v1/traces
+    traces_endpoint: http://victoriatraces:8428/insert/opentelemetry/v1/traces
     tls:
       insecure: true
 

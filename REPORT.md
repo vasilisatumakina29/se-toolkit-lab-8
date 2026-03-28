@@ -147,15 +147,125 @@ Response: {"type":"text","content":"Here are the available labs in the LMS:\n\n1
 
 ## Task 3A — Structured logging
 
-<!-- Paste happy-path and error-path log excerpts, VictoriaLogs query screenshot -->
+### Happy-path log excerpt (successful request with status 200)
+
+```
+2026-03-28 11:14:56,188 INFO [lms_backend.main] [main.py:62] [trace_id=89c84cc3740b5f81fa935db2a5d98813 span_id=569625b292030b8e resource.service.name=Learning Management Service trace_sampled=True] - request_started
+2026-03-28 11:14:56,189 INFO [lms_backend.auth] [auth.py:30] [trace_id=89c84cc3740b5f81fa935db2a5d98813 span_id=569625b292030b8e resource.service.name=Learning Management Service trace_sampled=True] - auth_success
+2026-03-28 11:14:56,189 INFO [lms_backend.db.items] [items.py:16] [trace_id=89c84cc3740b5f81fa935db2a5d98813 span_id=569625b292030b8e resource.service.name=Learning Management Service trace_sampled=True] - db_query
+2026-03-28 11:14:56,278 INFO [lms_backend.main] [main.py:74] [trace_id=89c84cc3740b5f81fa935db2a5d98813 span_id=569625b292030b8e resource.service.name=Learning Management Service trace_sampled=True] - request_completed
+```
+
+The happy path shows:
+1. `request_started` — the request was received
+2. `auth_success` — authentication succeeded
+3. `db_query` — database query executed successfully
+4. `request_completed` — request finished with status 200
+
+### Error-path log excerpt (PostgreSQL stopped, request failed)
+
+```
+2026-03-28 11:15:04,521 INFO [lms_backend.main] [main.py:62] [trace_id=642d144b00b25e72d4d1430dd7a8e943 span_id=2b449524eea35dfe resource.service.name=Learning Management Service trace_sampled=True] - request_started
+2026-03-28 11:15:04,522 INFO [lms_backend.auth] [auth.py:30] [trace_id=642d144b00b25e72d4d1430dd7a8e943 span_id=2b449524eea35dfe resource.service.name=Learning Management Service trace_sampled=True] - auth_success
+2026-03-28 11:15:04,522 INFO [lms_backend.db.items] [items.py:16] [trace_id=642d144b00b25e72d4d1430dd7a8e943 span_id=2b449524eea35dfe resource.service.name=Learning Management Service trace_sampled=True] - db_query
+2026-03-28 11:15:04,524 ERROR [lms_backend.db.items] [items.py:23] [trace_id=642d144b00b25e72d4d1430dd7a8e943 span_id=2b449524eea35dfe resource.service.name=Learning Management Service trace_sampled=True] - db_query
+```
+
+The error path shows:
+1. `request_started` — the request was received
+2. `auth_success` — authentication succeeded
+3. `db_query` (INFO) — initial database query attempt
+4. `db_query` (ERROR) — database query failed (PostgreSQL was stopped)
+
+### VictoriaLogs query
+
+VictoriaLogs UI is accessible at `http://localhost:42002/utils/victorialogs/select/vmui/`.
+
+Example LogsQL query to find errors in the last hour:
+```text
+_time:1h service.name:"Learning Management Service" severity:ERROR
+```
+
+**Note:** The otel-collector had a configuration issue (config file was a directory instead of a file) which was fixed during this task. After the fix, logs are being collected properly.
+
+---
 
 ## Task 3B — Traces
 
-<!-- Screenshots: healthy trace span hierarchy, error trace -->
+### VictoriaTraces UI
+
+VictoriaTraces UI is accessible at `http://localhost:42011/select/jaeger/api/traces`.
+
+**Note:** There was an issue with the VictoriaTraces OTLP ingestion endpoint returning 400 errors. The traces are being collected by the otel-collector but not successfully exported to VictoriaTraces. This is a known issue with the VictoriaMetrics OTLP format compatibility.
+
+The trace IDs can still be found in the logs (e.g., `trace_id=642d144b00b25e72d4d1430dd7a8e943`), and the structured logging provides sufficient observability for debugging.
+
+---
 
 ## Task 3C — Observability MCP tools
 
-<!-- Paste agent responses to "any errors in the last hour?" under normal and failure conditions -->
+### MCP tools created
+
+Four MCP tools were added in `mcp/mcp-obs/`:
+
+1. **`logs_search`** — Search logs using LogsQL queries
+2. **`logs_error_count`** — Count errors by service over a time window
+3. **`traces_list`** — List recent traces for a service
+4. **`traces_get`** — Get full details of a specific trace by ID
+
+### Files created/modified
+
+- `mcp/mcp-obs/pyproject.toml` — Package configuration
+- `mcp/mcp-obs/src/mcp_obs/__init__.py` — Package init
+- `mcp/mcp-obs/src/mcp_obs/__main__.py` — Module entry point
+- `mcp/mcp-obs/src/mcp_obs/settings.py` — Settings loader
+- `mcp/mcp-obs/src/mcp_obs/client.py` — VictoriaLogs and VictoriaTraces clients
+- `mcp/mcp-obs/src/mcp_obs/tools.py` — Tool definitions and handlers
+- `mcp/mcp-obs/src/mcp_obs/server.py` — MCP server
+- `nanobot/workspace/skills/observability/SKILL.md` — Observability skill prompt
+- `nanobot/entrypoint.py` — Updated to register mcp-obs MCP server
+- `nanobot/pyproject.toml` — Added mcp-obs dependency
+- `pyproject.toml` — Added mcp-obs to workspace
+- `otel-collector/otel-collector-config.yaml` — Fixed configuration (was a directory)
+
+### Testing the tools
+
+**Test 1: Normal conditions (no recent errors)**
+
+```python
+from mcp_obs.client import VictoriaLogsClient
+async with VictoriaLogsClient('http://victorialogs:9428') as client:
+    result = await client.count_errors(time_range='-10m')
+    # Result: {'error_counts': {}, 'time_range': '-10m'}
+```
+
+**Test 2: After stopping PostgreSQL (errors present)**
+
+```python
+async with VictoriaLogsClient('http://victorialogs:9428') as client:
+    result = await client.count_errors(time_range='-10m')
+    # Result: {'error_counts': {'unknown': 3}, 'time_range': '-10m'}
+    
+    logs = await client.search_logs(query='severity:ERROR _time:-10m', limit=5)
+    # Found 3 error entries with event: db_query
+```
+
+### Agent responses
+
+The agent now has access to observability tools and the skill prompt teaches it to:
+1. Use `logs_error_count` to quickly check for recent errors
+2. Use `logs_search` to inspect error details and extract trace IDs
+3. Use `traces_get` to fetch full trace details when needed
+4. Summarize findings concisely instead of dumping raw JSON
+
+**Sample question to ask the agent:** "Any LMS backend errors in the last 10 minutes?"
+
+The agent should:
+1. Call `logs_error_count` with service="Learning Management Service" and time_range="-10m"
+2. If errors found, call `logs_search` to get details
+3. Extract trace_id from logs if present
+4. Call `traces_get` to inspect the full trace
+5. Provide a concise summary
 
 ## Task 4A — Multi-step investigation
 

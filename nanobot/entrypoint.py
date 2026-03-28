@@ -68,6 +68,20 @@ def resolve_config():
             },
         }
 
+    # Configure mcp_obs MCP server for observability tools
+    config["tools"]["mcpServers"]["obs"] = {
+        "command": "python",
+        "args": ["-m", "mcp_obs"],
+        "env": {
+            "NANOBOT_VICTORIALOGS_URL": os.environ.get(
+                "NANOBOT_VICTORIALOGS_URL", "http://victorialogs:9428"
+            ),
+            "NANOBOT_VICTORIATRACES_URL": os.environ.get(
+                "NANOBOT_VICTORIATRACES_URL", "http://victoriatraces:8428"
+            ),
+        },
+    }
+
     # Write resolved config
     with open(resolved_path, "w") as f:
         json.dump(config, f, indent=2)

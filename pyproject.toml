@@ -3,6 +3,7 @@ members = [
   "backend",
   "qwen-code-api",
   "mcp/mcp-lms",
+  "mcp/mcp-obs",
   "nanobot",
   "nanobot-websocket-channel/nanobot-channel-protocol",
   "nanobot-websocket-channel/mcp-webchat",
@@ -12,6 +13,7 @@ members = [
 [tool.uv.sources]
 nanobot-ai = { url = "https://github.com/HKUDS/nanobot/archive/e7d371ec1e6531b28898ec2c869ef338e8dd46ec.zip" }
 mcp-lms = { workspace = true }
+mcp-obs = { workspace = true }
 mcp-webchat = { workspace = true }
 nanobot-channel-protocol = { workspace = true }
 nanobot-webchat = { workspace = true }
