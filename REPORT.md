@@ -316,36 +316,65 @@ The LMS backend is failing because it **cannot connect to its database**.
 
 ## Task 4B — Proactive health check
 
-**Scheduled job created:**
+### Cron Tool Setup
 
-| Job | ID | Interval | Last Run | Next Run |
-|-----|-----|----------|----------|----------|
-| LMS Health Check | `fdb34494` | Every 2 min | 12:02:51 UTC ✅ | 12:05:31 UTC |
+The nanobot agent has a built-in `cron` tool for scheduling recurring tasks. To enable it:
 
-**Proactive health report** (posted automatically while PostgreSQL was stopped):
+1. **Created cron skill documentation** — `nanobot/workspace/skills/cron/SKILL.md`
+2. **Updated agent instructions** — `nanobot/workspace/AGENTS.md` with cron tool usage
+3. **Updated tools documentation** — `nanobot/workspace/TOOLS.md` with cron syntax
 
-**🔴 LMS Backend Issue Detected**
+### Test Evidence
 
-The LMS backend is currently **unhealthy** and cannot return the list of available labs.
+**Creating a health check job:**
 
-**Root Cause:** Database connection failure
-- Error: `[Errno -2] Name or service not known`
-- The LMS service cannot resolve the database hostname
-- This causes the `/items/` endpoint to return HTTP 404
+```
+Request: "Create a health check that runs every 2 minutes using your cron tool."
 
-**Recent Logs (last 5 min):**
-- `WARN`: items_list_failed_as_not_found
-- `ERROR`: db_query failed with DNS resolution error
-- `INFO`: request_completed with status 404
+Response: "I'll create a health check cron job that runs every 2 minutes to monitor LMS/backend errors."
 
-**What this means:**
-- Labs, learners, and all LMS data are currently inaccessible
-- The database service may be down or misconfigured
+Response: "The health check cron job has been created (ID: `daa7817f`). It will run every 2 minutes."
 
-**Suggested actions:**
-1. Check if the database service is running
-2. Verify database hostname/DNS configuration
-3. Try triggering a sync pipeline once the DB is back: `lms_sync_pipeline`
+Response: "**Initial Health Check Result:**
+🟢 **LMS Backend**: Healthy (56 items)
+✅ **Errors (last 2 min)**: None detected
+
+The cron job is now active and will post a similar summary every 2 minutes."
+```
+
+**Listing scheduled jobs:**
+
+```
+Request: "List scheduled jobs."
+
+Response: "**Scheduled Jobs:**
+
+| ID | Description | Schedule | Next Run |
+|------|-------------|----------|----------|
+| `09cd28ae` | LMS/backend health check | `*/2 * * * *` (every 2 min) | 12:54:00 UTC |
+| `640a0fca` | Check LMS/backend errors | every 2m | 12:54:38 UTC |
+| `0984a4d3` | 🏥 LMS Health Check | every 2m | 12:54:38 UTC |
+| `daa7817f` | 🔍 LMS Health Check (new) | every 2m | 12:55:44 UTC |
+| `0d59500b` | LMS Health Check | every 15m | 13:07:38 UTC |
+| `0e5de9b0` | Check for backend errors | every 15m | 13:07:38 UTC |
+
+You have **6 scheduled jobs** total."
+```
+
+### Nanobot Logs
+
+```
+nanobot-1  | INFO | nanobot.agent.loop:_prepare_tools:253 - Tool call: cron({"action": "add", "cron_expr": "*/2 * * * *", "message": "LMS/backend health check..."})
+nanobot-1  | INFO | nanobot.cron.service:add_job:351 - Cron: added job 'LMS/backend health check...' (09cd28ae)
+nanobot-1  | INFO | nanobot.agent.loop:_prepare_tools:253 - Tool call: cron({"action": "list"})
+nanobot-1  | ✓ Cron: 4 scheduled jobs
+```
+
+### Files Created/Modified
+
+- `nanobot/workspace/skills/cron/SKILL.md` — Cron skill documentation
+- `nanobot/workspace/AGENTS.md` — Updated with cron tool instructions
+- `nanobot/workspace/TOOLS.md` — Updated with cron tool syntax
 
 ---
 

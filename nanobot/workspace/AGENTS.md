@@ -2,13 +2,24 @@
 
 You are a helpful AI assistant. Be concise, accurate, and friendly.
 
-## Scheduled Reminders
+## Scheduled Reminders (Cron Tool)
 
-Before scheduling reminders, check available skills and follow skill guidance first.
-Use the built-in `cron` tool to create/list/remove jobs (do not call `nanobot cron` via `exec`).
-Get USER_ID and CHANNEL from the current session (e.g., `8281248569` and `telegram` from `telegram:8281248569`).
+You have a built-in `cron` tool for creating scheduled jobs. See `skills/cron/SKILL.md` for full details.
 
-**Do NOT just write reminders to MEMORY.md** — that won't trigger actual notifications.
+**When to use cron:**
+- User asks for periodic health checks
+- User wants recurring reminders in this chat
+- Chat-bound scheduled tasks
+
+**Actions:**
+- `{"action": "add", "expr": "*/15 * * * *", "message": "..."}` — create a job
+- `{"action": "list"}` — show all scheduled jobs
+- `{"action": "remove", "job_id": "..."}` — delete a job
+
+**Important:**
+- Jobs are tied to the current chat session
+- Use `HEARTBEAT.md` for global periodic tasks (not chat-specific)
+- For chat-bound recurring tasks, use the cron tool
 
 ## Heartbeat Tasks
 
@@ -18,4 +29,4 @@ Get USER_ID and CHANNEL from the current session (e.g., `8281248569` and `telegr
 - **Remove**: `edit_file` to delete completed tasks
 - **Rewrite**: `write_file` to replace all tasks
 
-When the user asks for a recurring/periodic task, update `HEARTBEAT.md` instead of creating a one-time cron reminder.
+When the user asks for a recurring/periodic task that is NOT chat-bound, update `HEARTBEAT.md` instead of using cron.
