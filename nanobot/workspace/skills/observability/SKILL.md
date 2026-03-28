@@ -48,6 +48,23 @@ User: "Any LMS backend errors in the last 10 minutes?"
 4. Call `traces_get(trace_id="<extracted_id>")` to see the full request flow
 5. Summarize: what failed, where, and why
 
+### One-shot investigation flow for "What went wrong?" or "Check system health":
+
+When the user asks **"What went wrong?"** or **"Check system health"**, chain these steps in one pass:
+
+1. **`logs_error_count`** on a fresh recent window (e.g., last 5-10 minutes)
+2. **`logs_search`** scoped to the most likely failing service (e.g., LMS backend)
+3. **`traces_get`** for the most relevant recent `trace_id` found in logs
+4. **One short explanation** that explicitly mentions:
+   - **Log evidence**: what the error logs say (event type, error message, affected service)
+   - **Trace evidence**: what the trace shows (request flow, where it failed)
+   - **Root cause**: the failing operation and affected component
+
+**Important:** Look for discrepancies between what the logs/traces show vs. what the API response reports. For example:
+- Logs/traces may show a PostgreSQL connection failure
+- But the API response might incorrectly report it as "404 Items not found"
+- Your job is to surface the **real** underlying failure, not the misleading HTTP response
+
 ## Tips
 
 - Always narrow the time range when possible (`_time:-10m`, `_time:-1h`)
@@ -55,6 +72,7 @@ User: "Any LMS backend errors in the last 10 minutes?"
 - When you find an error, look for the `trace_id` to correlate with traces
 - Traces show the full request flow across services — useful for understanding cascading failures
 - Don't dump raw JSON — summarize the key findings
+- For "What went wrong?", always cite both log evidence AND trace evidence
 
 ## Common Queries
 
