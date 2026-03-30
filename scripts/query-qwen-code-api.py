@@ -23,7 +23,7 @@ import sys
 import urllib.error
 import urllib.request
 
-
+## main function
 def main() -> None:
     parser = argparse.ArgumentParser(description="Query the Qwen Code API")
     parser.add_argument(
