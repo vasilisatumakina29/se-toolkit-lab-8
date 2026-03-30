@@ -81,6 +81,7 @@ def main() -> None:
         },
     )
 
+    ## try-except functionality
     try:
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read())
